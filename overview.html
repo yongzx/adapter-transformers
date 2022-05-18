@@ -1,0 +1,475 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Overview: Efficient Fine-Tuning and Adapters &mdash; adapter-transformers  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.png"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script src="_static/clipboard.min.js"></script>
+        <script src="_static/copybutton.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/copybutton.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Adapter Training" href="training.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> adapter-transformers
+          
+
+          
+            
+            <img src="_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview: Efficient Fine-Tuning and Adapters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#bottleneck-adapters">Bottleneck Adapters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#language-adapters-invertible-adapters">Language Adapters - Invertible Adapters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prefix-tuning">Prefix Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compacter">Compacter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#combinations-mix-and-match-adapters">Combinations - Mix-and-Match Adapters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="training.html">Adapter Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="adapter_composition.html">Adapter Activation and Composition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prediction_heads.html">Prediction Heads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="embeddings.html">Embeddings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Extending the Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transitioning.html">Transitioning from Earlier Versions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Loading and Sharing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="loading.html">Loading Pre-Trained Adapters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to AdapterHub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="huggingface_hub.html">Integration with HuggingFace’s Model Hub</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Supported Models</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model_overview.html">Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/auto.html">Auto Classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/bart.html">BART</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/bert.html">BERT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/distilbert.html">DistilBERT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/encoderdecoder.html">Encoder Decoder Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/gpt2.html">OpenAI GPT2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/mbart.html">MBart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/roberta.html">RoBERTa</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/t5.html">T5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/models/xlmroberta.html">XLM-RoBERTa</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Adapter-Related Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="classes/adapter_config.html">Adapter Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/model_adapters_config.html">Model Adapters Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/adapter_modules.html">Adapter Modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/adapter_layer.html">AdapterLayer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/model_mixins.html">Model Mixins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classes/adapter_utils.html">Adapter Utilities</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">adapter-transformers</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Overview: Efficient Fine-Tuning and Adapters</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/overview.md.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="tex2jax_ignore mathjax_ignore section" id="overview-efficient-fine-tuning-and-adapters">
+<h1>Overview: Efficient Fine-Tuning and Adapters<a class="headerlink" href="#overview-efficient-fine-tuning-and-adapters" title="Permalink to this headline">¶</a></h1>
+<p>Large pre-trained Transformer-based language models (LMs) have become the foundation of NLP in recent years.
+While the most prevalent method of using these LMs for transfer learning involves costly <em>full fine-tuning</em> of all model parameters, a series of <em>efficient</em> and <em>lightweight</em> alternatives have been established in recent time.
+Instead of updating all parameters of the pre-trained LM towards a downstream target task, these methods commonly introduce a small amount of new parameters and only update these while keeping the pre-trained model weights fixed.</p>
+<div class="admonition-why-use-efficient-fine-tuning admonition">
+<p class="admonition-title">Why use Efficient Fine-Tuning?</p>
+<p>Efficient fine-tuning methods offer multiple benefits over full fine-tuning of LMs:</p>
+<ul class="simple">
+<li><p>They are <strong>parameter-efficient</strong>, i.e. they only update a very small subset (often under 1%) of a model’s parameters.</p></li>
+<li><p>They often are <strong>modular</strong>, i.e. the updated parameters can be extracted and shared independently of the base model parameters.</p></li>
+<li><p>They are easy to share and easy to deploy due to their <strong>small file sizes</strong>, e.g. having only ~3MB per task instead of ~440MB for sharing a full model.</p></li>
+<li><p>They <strong>speed up training</strong>, i.e. efficient fine-tuning often needs less time for training compared fully fine-tuning LMs.</p></li>
+<li><p>They are <strong>composable</strong>, e.g. multiple adapters trained on different tasks can be stacked, fused or mixed to leverage their combined knowledge.</p></li>
+<li><p>They often provide <strong>on-par performance</strong> with full fine-tuning.</p></li>
+</ul>
+</div>
+<p>More specifically, let the parameters of a LM be composed of a set of pre-trained parameters <span class="math notranslate nohighlight">\(\Theta\)</span> (frozen) and a set of (newly introduced) parameters <span class="math notranslate nohighlight">\(\Phi\)</span>.
+Then, efficient fine-tuning methods optimize only <span class="math notranslate nohighlight">\(\Phi\)</span> according to a loss function <span class="math notranslate nohighlight">\(L\)</span> on a dataset <span class="math notranslate nohighlight">\(D\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[
+\Phi^* \leftarrow \arg \min_{\Phi} L(D; \{\Theta, \Phi\})
+\]</div>
+<p>Efficient fine-tuning might insert parameters <span class="math notranslate nohighlight">\(\Phi\)</span> at different locations of a Transformer-based LM.
+One early and successful method, (bottleneck) adapters, introduces bottleneck feed-forward layers in each layer of a Transformer model.
+While these adapters have laid the foundation of the adapter-transformers library, multiple alternative methods have been introduced and integrated since.
+In the following, we present all methods currently integrated into this library (see <a class="reference external" href="https://github.com/adapter-hub/adapter-transformers#implemented-methods">here</a> for a tabular overview).</p>
+<p><strong>Configuration:</strong> All presented methods can be added, trained, saved and shared using the same set of model class functions (see <a class="reference internal" href="classes/model_mixins.html#transformers.ModelAdaptersMixin" title="transformers.ModelAdaptersMixin"><span class="xref myst py py-class">class documentation</span></a>).
+Each method is specified and configured using a specific configuration class, all of which derive from the common <a class="reference internal" href="classes/adapter_config.html#transformers.AdapterConfigBase" title="transformers.AdapterConfigBase"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">AdapterConfigBase</span></code></span></a> class.
+E.g., adding one of the methods presented below to an existing model instance follows this scheme:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="o">...</span> <span class="c1"># config class deriving from AdapterConfigBase</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>In literature, different terms are used to refer to efficient fine-tuning methods.
+The term “adapter” is usually only applied to bottleneck adapter modules.
+However, most efficient fine-tuning methods follow the same general idea of inserting a small set of new parameters and by this “adapting” the pre-trained LM to a new task.
+In adapter-transformers, the term “adapter” thus may refer to any efficient fine-tuning method if not specified otherwise.</p>
+</div>
+<div class="section" id="bottleneck-adapters">
+<h2>Bottleneck Adapters<a class="headerlink" href="#bottleneck-adapters" title="Permalink to this headline">¶</a></h2>
+<p><em>Configuration class</em>: <a class="reference internal" href="classes/adapter_config.html#transformers.AdapterConfig" title="transformers.AdapterConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">AdapterConfig</span></code></span></a></p>
+<p>Bottleneck adapters introduce bottleneck feed-forward layers in each layer of a Transformer model.
+Generally, these adapter layers consist of a down-projection matrix <span class="math notranslate nohighlight">\(W_{down}\)</span> that projects the layer hidden states into a lower dimension <span class="math notranslate nohighlight">\(d_{bottleneck}\)</span>, a non-linearity <span class="math notranslate nohighlight">\(f\)</span>, an up-projection <span class="math notranslate nohighlight">\(W_{up}\)</span> that projects back into the original hidden layer dimension and a residual connection <span class="math notranslate nohighlight">\(r\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[
+h \leftarrow W_{up} \cdot f(W_{down} \cdot h) + r
+\]</div>
+<p>Depending on the concrete adapter configuration, these layers can be introduced at different locations within a Transformer block. Further, residual connections, layer norms, activation functions and bottleneck sizes etc. can be configured.</p>
+<p>The most important configuration hyperparameter to be highlighted here is the bottleneck dimension <span class="math notranslate nohighlight">\(d_{bottleneck}\)</span>.
+In adapter-transformers, this bottleneck dimension is specified indirectly via the <code class="docutils literal notranslate"><span class="pre">reduction_factor</span></code> attribute of a configuration.
+This <code class="docutils literal notranslate"><span class="pre">reduction_factor</span></code> defines the ratio between a model’s layer hidden dimension and the bottleneck dimension, i.e.:</p>
+<div class="math notranslate nohighlight">
+\[
+\text{reduction_factor} = \frac{d_{hidden}}{d_{bottleneck}}
+\]</div>
+<p>A visualization of further configuration options related to the adapter structure is given in the figure below. For more details, refer to the documentation of <a class="reference internal" href="classes/adapter_config.html#transformers.AdapterConfig" title="transformers.AdapterConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">AdapterConfig</span></code></span></a>.</p>
+<div class="figure align-center" id="id1">
+<a class="reference internal image-reference" href="_images/architecture.png"><img alt="Adapter architectures" src="_images/architecture.png" style="width: 350px;" /></a>
+<p class="caption"><span class="caption-text">Visualization of possible adapter configurations with corresponding dictionary keys.</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</div>
+<p>adapter-transformers comes with pre-defined configurations for some bottleneck adapter architectures proposed in literature:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="classes/adapter_config.html#transformers.HoulsbyConfig" title="transformers.HoulsbyConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">HoulsbyConfig</span></code></span></a> as proposed by <a class="reference external" href="https://arxiv.org/pdf/1902.00751.pdf">Houlsby et al. (2019)</a> places adapter layers after both the multi-head attention and feed-forward block in each Transformer layer.</p></li>
+<li><p><a class="reference internal" href="classes/adapter_config.html#transformers.PfeifferConfig" title="transformers.PfeifferConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">PfeifferConfig</span></code></span></a> as proposed by <a class="reference external" href="https://arxiv.org/pdf/2005.00052.pdf">Pfeiffer et al. (2020)</a> places an adapter layer only after the feed-forward block in each Transformer layer.</p></li>
+<li><p><a class="reference internal" href="classes/adapter_config.html#transformers.ParallelConfig" title="transformers.ParallelConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">ParallelConfig</span></code></span></a> as proposed by <a class="reference external" href="https://arxiv.org/pdf/2110.04366.pdf">He et al. (2021)</a> places adapter layers in parallel to the original Transformer layers.</p></li>
+</ul>
+<p><em>Example</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">AdapterConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">AdapterConfig</span><span class="p">(</span><span class="n">mh_adapter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">output_adapter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reduction_factor</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">non_linearity</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;bottleneck_adapter&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><em>Papers:</em></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/1902.00751.pdf">Parameter-Efficient Transfer Learning for NLP</a> (Houlsby et al., 2019)</p></li>
+<li><p><a class="reference external" href="https://arxiv.org/pdf/1909.08478.pdf">Simple, Scalable Adaptation for Neural Machine Translation</a> (Bapna and Firat, 2019)</p></li>
+<li><p><a class="reference external" href="https://aclanthology.org/2021.eacl-main.39.pdf">AdapterFusion: Non-Destructive Task Composition for Transfer Learning</a> (Pfeiffer et al., 2021)</p></li>
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2007.07779.pdf">AdapterHub: A Framework for Adapting Transformers</a> (Pfeiffer et al., 2020)</p></li>
+</ul>
+</div>
+<div class="section" id="language-adapters-invertible-adapters">
+<h2>Language Adapters - Invertible Adapters<a class="headerlink" href="#language-adapters-invertible-adapters" title="Permalink to this headline">¶</a></h2>
+<p><em>Configuration class</em>: <a class="reference internal" href="classes/adapter_config.html#transformers.PfeifferInvConfig" title="transformers.PfeifferInvConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">PfeifferInvConfig</span></code></span></a>, <a class="reference internal" href="classes/adapter_config.html#transformers.HoulsbyInvConfig" title="transformers.HoulsbyInvConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">HoulsbyInvConfig</span></code></span></a></p>
+<p>The MAD-X setup (<a class="reference external" href="https://arxiv.org/pdf/2005.00052.pdf">Pfeiffer et al., 2020</a>) proposes language adapters to learn language-specific transformations.
+After being trained on a language modeling task, a language adapter can be stacked before a task adapter for training on a downstream task.
+To perform zero-shot cross-lingual transfer, one language adapter can simply be replaced by another.</p>
+<p>In terms of architecture, language adapters are largely similar to regular bottleneck adapters, except for an additional <em>invertible adapter</em> layer after the LM embedding layer.
+Embedding outputs are passed through this invertible adapter in the forward direction before entering the first Transformer layer and in the inverse direction after leaving the last Transformer layer.
+Invertible adapter architectures are further detailed in <a class="reference external" href="https://arxiv.org/pdf/2005.00052.pdf">Pfeiffer et al. (2020)</a> and can be configured via the <code class="docutils literal notranslate"><span class="pre">inv_adapter</span></code> attribute of the <code class="docutils literal notranslate"><span class="pre">AdapterConfig</span></code> class.</p>
+<p><em>Example</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">PfeifferInvConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PfeifferInvConfig</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;lang_adapter&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><em>Papers:</em></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2005.00052.pdf">MAD-X: An Adapter-based Framework for Multi-task Cross-lingual Transfer</a> (Pfeiffer et al., 2020)</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>V1.x of adapter-transformers made a distinction between task adapters (without invertible adapters) and language adapters (with invertible adapters) with the help of the <code class="docutils literal notranslate"><span class="pre">AdapterType</span></code> enumeration.
+This distinction was dropped with v2.x.</p>
+</div>
+</div>
+<div class="section" id="prefix-tuning">
+<h2>Prefix Tuning<a class="headerlink" href="#prefix-tuning" title="Permalink to this headline">¶</a></h2>
+<p><em>Configuration class</em>: <a class="reference internal" href="classes/adapter_config.html#transformers.PrefixTuningConfig" title="transformers.PrefixTuningConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">PrefixTuningConfig</span></code></span></a></p>
+<p>Prefix Tuning (<a class="reference external" href="https://aclanthology.org/2021.acl-long.353.pdf">Li and Liang, 2021</a>) introduces new parameters in the multi-head attention blocks in each Transformer layer.
+More, specifically, it prepends trainable prefix vectors <span class="math notranslate nohighlight">\(P^K\)</span> and <span class="math notranslate nohighlight">\(P^V\)</span> to the keys and values of the attention head input, each of a configurable prefix length <span class="math notranslate nohighlight">\(l\)</span> (<code class="docutils literal notranslate"><span class="pre">prefix_length</span></code> attribute):</p>
+<div class="math notranslate nohighlight">
+\[
+head_i = \text{Attention}(Q W_i^Q, [P_i^K, K W_i^K], [P_i^V, V W_i^V])
+\]</div>
+<p>Following the original authors, the prefix vectors in <span class="math notranslate nohighlight">\(P^K\)</span> and <span class="math notranslate nohighlight">\(P^V\)</span> are note optimized directly, but reparameterized via a bottleneck MLP.
+This behavior is controlled via the <code class="docutils literal notranslate"><span class="pre">flat</span></code> attribute of the configuration.
+Using <code class="docutils literal notranslate"><span class="pre">PrefixTuningConfig(flat=True)</span></code> will create prefix tuning vectors that are optimized without reparameterization.</p>
+<p><em>Example</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">PrefixTuningConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PrefixTuningConfig</span><span class="p">(</span><span class="n">flat</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">prefix_length</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;prefix_tuning&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As reparameterization using the bottleneck MLP is not necessary for performing inference on an already trained Prefix Tuning module, adapter-transformers includes a function to “eject” a reparameterized Prefix Tuning into a flat one:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">eject_prefix_tuning</span><span class="p">(</span><span class="s2">&quot;prefix_tuning&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will only retain the necessary parameters and reduces the size of the trained Prefix Tuning.</p>
+<p><em>Papers:</em></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2101.00190.pdf">Prefix-Tuning: Optimizing Continuous Prompts for Generation</a> (Li and Liang, 2021)</p></li>
+</ul>
+</div>
+<div class="section" id="compacter">
+<h2>Compacter<a class="headerlink" href="#compacter" title="Permalink to this headline">¶</a></h2>
+<p><em>Configuration class</em>: <a class="reference internal" href="classes/adapter_config.html#transformers.CompacterConfig" title="transformers.CompacterConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">CompacterConfig</span></code></span></a>, <a class="reference internal" href="classes/adapter_config.html#transformers.CompacterPlusPlusConfig" title="transformers.CompacterPlusPlusConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">CompacterPlusPlusConfig</span></code></span></a></p>
+<p>The Compacter architecture proposed by <a class="reference external" href="https://arxiv.org/pdf/2106.04647.pdf">Mahabadi et al., 2021</a>
+is similar to the bottleneck adapter architecture. It only exchanges the linear down- and
+up-projection with a PHM layer. Unlike the linear layer, the PHM layer constructs its weight matrix from two smaller matrices, which reduces the number of parameters.
+These matrices can be factorized and shared between all adapter layers. You can exchange the down- and up-projection layers from any of the bottleneck adapters described in the previous section
+for a PHM layer by specifying <code class="docutils literal notranslate"><span class="pre">use_phm=True</span></code> in the config.</p>
+<p>The PHM layer has the following additional properties: <code class="docutils literal notranslate"><span class="pre">phm_dim</span></code>, <code class="docutils literal notranslate"><span class="pre">shared_phm_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">factorized_phm_rule</span></code>, <code class="docutils literal notranslate"><span class="pre">learn_phm</span></code>,
+<code class="docutils literal notranslate"><span class="pre">factorized_phm_W</span></code>, <code class="docutils literal notranslate"><span class="pre">shared_W_phm</span></code>, <code class="docutils literal notranslate"><span class="pre">phm_c_init</span></code>, <code class="docutils literal notranslate"><span class="pre">phm_init_range</span></code>, <code class="docutils literal notranslate"><span class="pre">hypercomplex_nonlinearity</span></code></p>
+<p>For more information check out the <a class="reference internal" href="classes/adapter_config.html#transformers.AdapterConfig" title="transformers.AdapterConfig"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">AdapterConfig</span></code></span></a> class.</p>
+<p>To add a Compacter to your model you can use the predefined configs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">CompacterConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">CompacterConfig</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;dummy&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><em>Papers:</em></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2106.04647.pdf">COMPACTER: Efficient Low-Rank Hypercomplex Adapter Layers</a> (Mahabadi, Henderson and Ruder, 2021)</p></li>
+</ul>
+</div>
+<div class="section" id="combinations-mix-and-match-adapters">
+<h2>Combinations - Mix-and-Match Adapters<a class="headerlink" href="#combinations-mix-and-match-adapters" title="Permalink to this headline">¶</a></h2>
+<p><em>Configuration class</em>: <a class="reference internal" href="classes/adapter_config.html#transformers.ConfigUnion" title="transformers.ConfigUnion"><span class="xref myst py py-class"><code class="docutils literal notranslate"><span class="pre">ConfigUnion</span></code></span></a></p>
+<p>While different efficient fine-tuning methods and configurations have often been proposed as standalone, it might be beneficial to combine them for joint training.
+To make this process easier, adapter-transformers provides the possibility to group multiple configuration instances together using the <code class="docutils literal notranslate"><span class="pre">ConfigUnion</span></code> class.</p>
+<p>For example, this could be used to define different reduction factors for the adapter modules placed after the multi-head attention and the feed-forward blocks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">AdapterConfig</span><span class="p">,</span> <span class="n">ConfigUnion</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">ConfigUnion</span><span class="p">(</span>
+    <span class="n">AdapterConfig</span><span class="p">(</span><span class="n">mh_adapter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">output_adapter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reduction_factor</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">non_linearity</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">),</span>
+    <span class="n">AdapterConfig</span><span class="p">(</span><span class="n">mh_adapter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">output_adapter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reduction_factor</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">non_linearity</span><span class="o">=</span><span class="s2">&quot;relu&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;union_adapter&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference external" href="https://arxiv.org/pdf/2110.04366.pdf">He et al. (2021)</a> study various variants and combinations of efficient fine-tuning methods.
+Among others, they propose <em>Mix-and-Match Adapters</em> as a combination of Prefix Tuning and parallel bottleneck adapters.
+This configuration is supported by adapter-transformers out-of-the-box:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">MAMConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">MAMConfig</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;mam_adapter&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>and is identical to using the following <code class="docutils literal notranslate"><span class="pre">ConfigUnion</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transformers.adapters</span> <span class="kn">import</span> <span class="n">ConfigUnion</span><span class="p">,</span> <span class="n">ParallelConfig</span><span class="p">,</span> <span class="n">PrefixTuningConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">ConfigUnion</span><span class="p">(</span>
+    <span class="n">PrefixTuningConfig</span><span class="p">(</span><span class="n">bottleneck_size</span><span class="o">=</span><span class="mi">800</span><span class="p">),</span>
+    <span class="n">ParallelConfig</span><span class="p">(),</span>
+<span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">add_adapter</span><span class="p">(</span><span class="s2">&quot;mam_adapter&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><em>Papers:</em></p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/pdf/2110.04366.pdf">Towards a Unified View of Parameter-Efficient Transfer Learning</a> (He et al., 2021)</p></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="training.html" class="btn btn-neutral float-right" title="Adapter Training" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020-2022, Adapter-Hub Team
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  <!--- IMPORTANT: This file has modifications compared to the snippet on the documentation page! -->
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Versions</span>
+    v: master
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt><dd><a href="./v1.1.1/index.html">v1.1.1</a></dd><dd><a href="./v2.3.0/index.html">v2.3.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="overview.html">master</a></dd>
+    </dl>
+  </div>
+</div>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
