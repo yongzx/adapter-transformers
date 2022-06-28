@@ -350,7 +350,14 @@ class BloomAttention(nn.Module):
             self.layer_number,
         )
 
-        self.query_key_value = nn.Linear(self.hidden_size, 3 * self.hidden_size, bias=True)
+        self.query_key_value = LoRAMergedLinear(
+                self.hidden_dim,
+                3 * self.embed_dim,
+                "selfattn",
+                config,
+                enable_lora=[True, False, True],
+                fan_in_fan_out=True,
+            )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)
         self.attention_dropout = nn.Dropout(config.attention_dropout)
 
@@ -484,8 +491,8 @@ class BloomMLP(nn.Module):
 
         self.pretraining_tp = config.pretraining_tp
         self.slow_but_exact = config.slow_but_exact
-        self.dense_h_to_4h = nn.Linear(hidden_size, 4 * hidden_size)
-        self.dense_4h_to_h = nn.Linear(4 * hidden_size, hidden_size)
+        self.c_fc = LoRALinear(hidden_size, 4 * hidden_size, "intermediate", config, fan_in_fan_out=True)
+        self.c_proj = LoRALinear(4 * hidden_size, hidden_size, "output", config, fan_in_fan_out=True)
         self.hidden_dropout = config.hidden_dropout
         self.gelu_impl = BloomGelu()
 
