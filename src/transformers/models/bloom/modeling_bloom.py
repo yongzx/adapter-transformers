@@ -29,7 +29,7 @@ from ...adapters.lora import Linear as LoRALinear
 from ...adapters.lora import MergedLinear as LoRAMergedLinear
 from ...adapters.mixins.bloom import BloomDecoderBlockAdaptersMixin, BloomModelAdapterMixin
 from ...adapters.model_mixin import ModelWithHeadsAdaptersMixin
-# from ...adapters.prefix_tuning import PrefixTuningShim
+from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
@@ -361,6 +361,9 @@ class BloomAttention(nn.Module):
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)
         self.attention_dropout = nn.Dropout(config.attention_dropout)
 
+        # BLOOM does not support cross-attention, so we always use "self_prefix" for the layer key
+        self.prefix_tuning = PrefixTuningShim("self_prefix", config)
+
     def forward(
         self,
         hidden_states,
@@ -397,6 +400,8 @@ class BloomAttention(nn.Module):
             present = (key_layer, value_layer)
         else:
             present = None
+            
+        key_layer, value_layer, attention_mask = self.prefix_tuning(key_layer, value_layer, attention_mask)
 
         # [batch_size, head_dim, q_length, k_length]
         output_size = (query_layer.size(0), query_layer.size(2), query_layer.size(1), key_layer.size(1))
