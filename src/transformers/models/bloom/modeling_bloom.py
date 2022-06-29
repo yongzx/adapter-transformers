@@ -15,11 +15,12 @@
 """PyTorch BLOOM model."""
 
 import math
+from turtle import hideturtle
 from typing import Tuple, Union
 
 import torch
 import torch.utils.checkpoint
-from torch import matmul, nn
+from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, LayerNorm, MSELoss
 
 from ...file_utils import add_code_sample_docstrings, add_start_docstrings, add_start_docstrings_to_model_forward
@@ -373,7 +374,9 @@ class BloomAttention(nn.Module):
         use_cache=False,
         output_attentions=False,
     ):  
-    
+        # repeat alibi tensor with the batch size
+        alibi = alibi.repeat(hidden_states.shape[0], 1, 1).to(hidden_states.device)
+
         mixed_x_layer = self.query_key_value(hidden_states)
 
         # [batch_size, seq_length, 3 x hidden_size] --> [batch_size, seq_length, num_heads, 3 x head_dim]
@@ -416,16 +419,14 @@ class BloomAttention(nn.Module):
         
         # hidden_states: [batch_size, seq_length, hidden_size]
         # move alibi to post-prefix-tuning
-        # repeat alibi tensor with the batch size
-        alibi = alibi.repeat(self.hidden_size, 1, 1).to(key_layer.device)
         # apply preprocessing if the input is padded
         if attention_mask is not None and 0 in attention_mask:
             alibi = pre_process_alibi_for_pad(alibi, attention_mask, self.num_heads)
         
         
         # slice alibi tensor until the query length
-        sliced_alibi = alibi[: output_size[0] * output_size[1], : output_size[2], : output_size[3]]
-        # print(key_layer.transpose(1, 0).transpose(1, 2).shape)
+        sliced_alibi = alibi[: output_size[0] * output_size[1], : , : output_size[3]]
+        
         # Raw attention scores. [batch_size * num_heads, q_length, k_length]
         beta = 1.0 / self.layer_number
         matmul_result = torch.baddbmm(
