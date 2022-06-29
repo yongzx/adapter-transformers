@@ -19,7 +19,7 @@ from typing import Tuple, Union
 
 import torch
 import torch.utils.checkpoint
-from torch import nn
+from torch import matmul, nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, LayerNorm, MSELoss
 
 from ...file_utils import add_code_sample_docstrings, add_start_docstrings, add_start_docstrings_to_model_forward
@@ -29,7 +29,7 @@ from ...adapters.lora import Linear as LoRALinear
 from ...adapters.lora import MergedLinear as LoRAMergedLinear
 from ...adapters.mixins.bloom import BloomDecoderBlockAdaptersMixin, BloomModelAdapterMixin
 from ...adapters.model_mixin import ModelWithHeadsAdaptersMixin
-# from ...adapters.prefix_tuning import PrefixTuningShim
+from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
@@ -350,7 +350,13 @@ class BloomAttention(nn.Module):
             self.layer_number,
         )
 
-        self.query_key_value = nn.Linear(self.hidden_size, 3 * self.hidden_size, bias=True)
+        self.query_key_value = LoRAMergedLinear(
+                self.hidden_size,
+                3 * self.hidden_size,
+                "selfattn",
+                config,
+                enable_lora=[True, False, True],
+            )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)
         self.attention_dropout = nn.Dropout(config.attention_dropout)
 
@@ -363,7 +369,7 @@ class BloomAttention(nn.Module):
         head_mask=None,
         use_cache=False,
         output_attentions=False,
-    ):
+    ):  
         # hidden_states: [batch_size, seq_length, hidden_size]
         # repeat alibi tensor with the batch size
         alibi = alibi.repeat(hidden_states.shape[0], 1, 1).to(hidden_states.device)
@@ -473,7 +479,7 @@ class BloomAttention(nn.Module):
         outputs = (output, present)
         if output_attentions:
             outputs += (attention_probs,)
-
+       
         return outputs
 
 
@@ -484,8 +490,8 @@ class BloomMLP(nn.Module):
 
         self.pretraining_tp = config.pretraining_tp
         self.slow_but_exact = config.slow_but_exact
-        self.dense_h_to_4h = nn.Linear(hidden_size, 4 * hidden_size)
-        self.dense_4h_to_h = nn.Linear(4 * hidden_size, hidden_size)
+        self.dense_h_to_4h = LoRALinear(hidden_size, 4 * hidden_size, "intermediate", config)
+        self.dense_4h_to_h = LoRALinear(4 * hidden_size, hidden_size, "output", config)
         self.hidden_dropout = config.hidden_dropout
         self.gelu_impl = BloomGelu()
 
