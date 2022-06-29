@@ -15,6 +15,7 @@
 """PyTorch BLOOM model."""
 
 import math
+from turtle import hideturtle
 from typing import Tuple, Union
 
 import torch
@@ -29,7 +30,7 @@ from ...adapters.lora import Linear as LoRALinear
 from ...adapters.lora import MergedLinear as LoRAMergedLinear
 from ...adapters.mixins.bloom import BloomDecoderBlockAdaptersMixin, BloomModelAdapterMixin
 from ...adapters.model_mixin import ModelWithHeadsAdaptersMixin
-# from ...adapters.prefix_tuning import PrefixTuningShim
+from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
@@ -350,9 +351,18 @@ class BloomAttention(nn.Module):
             self.layer_number,
         )
 
-        self.query_key_value = nn.Linear(self.hidden_size, 3 * self.hidden_size, bias=True)
+        self.query_key_value = LoRAMergedLinear(
+                self.hidden_size,
+                3 * self.hidden_size,
+                "selfattn",
+                config,
+                enable_lora=[True, False, True],
+            )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)
         self.attention_dropout = nn.Dropout(config.attention_dropout)
+
+        # BLOOM does not support cross-attention, so we always use "self_prefix" for the layer key
+        self.prefix_tuning = PrefixTuningShim("self_prefix", config)
 
     def forward(
         self,
@@ -363,14 +373,9 @@ class BloomAttention(nn.Module):
         head_mask=None,
         use_cache=False,
         output_attentions=False,
-    ):
-        # hidden_states: [batch_size, seq_length, hidden_size]
+    ):  
         # repeat alibi tensor with the batch size
         alibi = alibi.repeat(hidden_states.shape[0], 1, 1).to(hidden_states.device)
-
-        # apply preprocessing if the input is padded
-        if attention_mask is not None and 0 in attention_mask:
-            alibi = pre_process_alibi_for_pad(alibi, attention_mask, self.num_heads)
 
         mixed_x_layer = self.query_key_value(hidden_states)
 
@@ -390,26 +395,44 @@ class BloomAttention(nn.Module):
             present = (key_layer, value_layer)
         else:
             present = None
-
-        # [batch_size, head_dim, q_length, k_length]
-        output_size = (query_layer.size(0), query_layer.size(2), query_layer.size(1), key_layer.size(1))
+        
+        # [batch_size, num_heads, q_length, k_length]
+        output_size = [query_layer.size(0), query_layer.size(2), query_layer.size(1), key_layer.size(1)]
 
         # [batch_size, q_length, num_heads, head_dim] -> [q_length, batch_size * num_heads, head_dim]
         query_layer = query_layer.transpose(1, 0).reshape(output_size[2], output_size[0] * output_size[1], -1)
-
-        # [batch_size, k_length, num_heads, head_dim] -> [k_length, batch_size * num_heads, head_dim]
-        key_layer = key_layer.transpose(1, 0).reshape(output_size[3], output_size[0] * output_size[1], -1)
-
+        
+        # prefix tuning: 
+        # want [batch_size, num_heads, hidden_dim, head_dim] as input
+        # unsqueeze to [batch_size, num_heads, hidden_dim, head_dim]
+        key_layer = key_layer.unsqueeze(dim=0) if key_layer.dim() == 3 else key_layer
+        key_layer = key_layer.transpose(1,2)
+        
+        value_layer = value_layer.unsqueeze(dim=0) if value_layer.dim() == 3 else value_layer
+        value_layer = value_layer.transpose(1,2)
+        key_layer, value_layer, attention_mask = self.prefix_tuning(key_layer, value_layer, attention_mask)
+        output_size[3] = key_layer.shape[2]
+        
+        # [batch_size, num_heads, k_length, head_dim] -> [k_length, batch_size * num_heads, head_dim]
+        key_layer = key_layer.transpose(1, 2).transpose(1, 0)
+        key_layer = key_layer.reshape(output_size[3], output_size[0] * output_size[1], -1)
+        
+        # hidden_states: [batch_size, seq_length, hidden_size]
+        # move alibi to post-prefix-tuning
+        # apply preprocessing if the input is padded
+        if attention_mask is not None and 0 in attention_mask:
+            alibi = pre_process_alibi_for_pad(alibi, attention_mask, self.num_heads)
+        
+        
         # slice alibi tensor until the query length
-        sliced_alibi = alibi[: output_size[0] * output_size[1], :, : output_size[3]]
-
+        sliced_alibi = alibi[: output_size[0] * output_size[1], : , : output_size[3]]
+        
         # Raw attention scores. [batch_size * num_heads, q_length, k_length]
         beta = 1.0 / self.layer_number
-
         matmul_result = torch.baddbmm(
             sliced_alibi,
             query_layer.transpose(1, 0),
-            key_layer.transpose(1, 0).transpose(1, 2),
+            key_layer.transpose(1, 0).transpose(1, 2), # [batch_size * num_heads, head_dim, k_length]
             beta=beta,
             alpha=(1.0 / self.norm_factor),
         )
@@ -426,13 +449,13 @@ class BloomAttention(nn.Module):
 
         if head_mask is not None:
             attention_probs = attention_probs * head_mask
-
+       
         # context layer shape: [batch_size, num_heads, q_length, head_dim]
-        output_size = (value_layer.size(0), value_layer.size(2), query_layer.size(0), value_layer.size(3))
+        output_size = (value_layer.size(0), value_layer.size(1), query_layer.size(0), value_layer.size(3))
 
         # change view [k_length, batch_size x num_heads, head_dim]
-        value_layer = value_layer.transpose(1, 0).reshape(value_layer.size(1), output_size[0] * output_size[1], -1)
-
+        value_layer = value_layer.transpose(2, 0).reshape(-1, output_size[0] * output_size[1], output_size[3])
+        
         # change view [batch_size x num_heads, q_length, k_length]
         attention_probs_reshaped = attention_probs.view(output_size[0] * output_size[1], output_size[2], -1)
 
@@ -473,7 +496,7 @@ class BloomAttention(nn.Module):
         outputs = (output, present)
         if output_attentions:
             outputs += (attention_probs,)
-
+            
         return outputs
 
 
@@ -484,8 +507,8 @@ class BloomMLP(nn.Module):
 
         self.pretraining_tp = config.pretraining_tp
         self.slow_but_exact = config.slow_but_exact
-        self.dense_h_to_4h = nn.Linear(hidden_size, 4 * hidden_size)
-        self.dense_4h_to_h = nn.Linear(4 * hidden_size, hidden_size)
+        self.dense_h_to_4h = LoRALinear(hidden_size, 4 * hidden_size, "intermediate", config)
+        self.dense_4h_to_h = LoRALinear(4 * hidden_size, hidden_size, "output", config)
         self.hidden_dropout = config.hidden_dropout
         self.gelu_impl = BloomGelu()
 
