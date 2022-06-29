@@ -168,7 +168,7 @@ class PrefixTuningPool(nn.Module):
         for location_key, count in self.prefix_counts[prefix_name].items():
             module_configs[location_key] = {
                 "n_layers": count,
-                "n_heads": self.config.num_attention_heads,
+                "n_heads": self.config.num_attention_heads if not self.config.model_type == "bloom" else self.config.n_head,
                 "input_size": self.config.hidden_size,
             }
         prefix_tuning = PrefixTuningGroup(module_configs, prefix_tuning_config)
