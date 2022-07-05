@@ -375,6 +375,7 @@ class BloomAttention(nn.Module):
         output_attentions=False,
     ):  
         # repeat alibi tensor with the batch size
+        # hidden_states: [batch_size, seq_length, hidden_size]
         alibi = alibi.repeat(hidden_states.shape[0], 1, 1).to(hidden_states.device)
 
         mixed_x_layer = self.query_key_value(hidden_states)
@@ -410,23 +411,26 @@ class BloomAttention(nn.Module):
         
         value_layer = value_layer.unsqueeze(dim=0) if value_layer.dim() == 3 else value_layer
         value_layer = value_layer.transpose(1,2)
+
+    
         key_layer, value_layer, attention_mask = self.prefix_tuning(key_layer, value_layer, attention_mask)
+
+
         output_size[3] = key_layer.shape[2]
         
         # [batch_size, num_heads, k_length, head_dim] -> [k_length, batch_size * num_heads, head_dim]
         key_layer = key_layer.transpose(1, 2).transpose(1, 0)
         key_layer = key_layer.reshape(output_size[3], output_size[0] * output_size[1], -1)
         
-        # hidden_states: [batch_size, seq_length, hidden_size]
-        # move alibi to post-prefix-tuning
+        # move alibi processing to post-prefix-tuning since attn mask gets lengthened by prefix tuning!
         # apply preprocessing if the input is padded
         if attention_mask is not None and 0 in attention_mask:
-            alibi = pre_process_alibi_for_pad(alibi, attention_mask, self.num_heads)
+            alibi = pre_process_alibi_for_pad(alibi, attention_mask, self.num_heads).to(alibi.device)
         
-        
+
         # slice alibi tensor until the query length
         sliced_alibi = alibi[: output_size[0] * output_size[1], : , : output_size[3]]
-        
+       
         # Raw attention scores. [batch_size * num_heads, q_length, k_length]
         beta = 1.0 / self.layer_number
         matmul_result = torch.baddbmm(
