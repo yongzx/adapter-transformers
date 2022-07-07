@@ -292,9 +292,8 @@ class MergedLinear(LoRALayer, nn.Linear):
                     result = F.linear(x, T(self.weight), bias=self.bias)
                     lora = self.loras[adapter_setup[0]]
                     if lora.config.is_ia3:
-                        # TODO: do zeroing/padding
-                        print(zero_pad(lora.ia3))
-                        result = result * zero_pad(lora.ia3)
+                        # TODO: check here that op is correct + do padding
+                        result = result * lora.ia3
                         return result
                     elif lora.r > 0:
                             after_A = F.linear(lora.lora_dropout(x), lora.lora_A)
