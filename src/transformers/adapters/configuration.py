@@ -399,6 +399,8 @@ class LoRAConfig(AdapterConfigBase):
     """
 
     architecture: Optional[str] = "lora"
+    
+    is_ia3: bool = False # if True, use the IA3 architecture. 
 
     selfattn_lora: bool = True
     intermediate_lora: bool = False
@@ -408,6 +410,38 @@ class LoRAConfig(AdapterConfigBase):
     alpha: int = 8
     dropout: float = 0.0
     init_weights: str = "lora"
+
+@dataclass(eq=False)
+class IA3Config(LoRAConfig):
+    """
+    A parameter-efficient finetuning architecture proposed by Liu et al. (2022). See https://arxiv.org/pdf/2205.05638.pdf.
+    
+    Args: 
+        query_ia3 (bool, optional): If True, add IA3 to the query weights of a model.
+            Defaults to False.
+        key_ia3 (bool, optional): If True, add IA3 scaling to the key weights of a model.
+            Defaults to True.
+        value_ia3 (bool, optional): If True, add IA3 scaling to the value weights of a model.
+            Defaults to True.
+        ff_ia3 (bool, optional): If True, add IA3 scaling to the feed-forward weights of a model.
+            Defaults to True.
+        
+    """
+
+    architecture: Optional[str] = "ia3"
+
+    is_ia3: bool = True # Whether to use IA3.
+
+    # defaults correspond to values in T-Few paper.
+    query_ia3: bool = False
+    key_ia3: bool = True
+    value_ia3: bool = True
+    ff_ia3: bool = True
+
+    selfattn_lora: bool = True
+    intermediate_lora: bool = False
+    output_lora: bool = True
+
 
 
 class ConfigUnion(AdapterConfigBase):
@@ -531,6 +565,7 @@ ADAPTER_CONFIG_MAP = {
     "scaled_parallel": ParallelConfig(scaling="learned"),
     "lora": LoRAConfig(),
     "mam": MAMConfig(),
+    "ia3": IA3Config(),
 }
 
 DEFAULT_ADAPTER_CONFIG = "pfeiffer"

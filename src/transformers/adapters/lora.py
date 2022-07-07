@@ -11,8 +11,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .composition import AdapterCompositionBlock
-from .configuration import LoRAConfig
+from .configuration import LoRAConfig, IA3Config
 from .layer import AdapterLayerBase
+
+
+class IA3(nn.Module):
+    def __init__(
+        self,
+        hidden_dim,
+        config: IA3Config,
+    ):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.config = config
+
+        # Actual trainable parameters
+        # self.ia3 = torch.ones(hidden_dim)
+        self.ia3 = nn.Parameter(
+            torch.ones(hidden_dim)
+        )
+        # # initialize
+        nn.init.ones_(self.ia3)
 
 
 class LoRA(nn.Module):
@@ -23,6 +42,7 @@ class LoRA(nn.Module):
         config: LoRAConfig,
     ):
         super().__init__()
+        self.config = config
         self.r = config.r
         self.lora_alpha = config.alpha
         # Optional dropout
@@ -69,9 +89,14 @@ class LoRALayer(AdapterLayerBase):
             location_key=self.location_key,
         )
         if lora_config is not None:
-            lora = LoRA(*self._get_lora_shapes(lora_config), lora_config)
-            lora.train(self.training)
-            self.loras[adapter_name] = lora
+            if not isinstance(lora_config, IA3Config):
+                lora = LoRA(*self._get_lora_shapes(lora_config), lora_config)
+                lora.train(self.training)
+                self.loras[adapter_name] = lora
+            else:
+                ia3 = IA3(*self._get_lora_shapes(lora_config), lora_config)
+                ia3.train(self.training)
+                self.loras[adapter_name] = ia3
 
     def delete_adapter(self, adapter_name: str):
         if adapter_name in self.loras:
@@ -115,7 +140,11 @@ class Linear(LoRALayer, nn.Linear):
             self.weight.data = self.weight.data.T
 
     def _get_lora_shapes(self, config):
-        return (config.r, self.in_features), (self.out_features, config.r)
+        if config.is_ia3:
+            # print(self.out_features)
+            return (self.out_features,)
+        else:
+            return (config.r, self.in_features), (self.out_features, config.r)
 
     def reset_lora(self):
         def T(w):
@@ -138,8 +167,12 @@ class Linear(LoRALayer, nn.Linear):
             elif not self.merged:
                 lora = self.loras[name]
                 # Merge the weights and mark it
-                if lora.r > 0:
-                    self.weight.data += T(lora.lora_B @ lora.lora_A) * lora.scaling
+                if lora.is_ia3:
+                    # TODO: check that this multiplication is the right operation, and is done along the right axis (fan_in_fan_out may change this)
+                    self.weight.data = self.weight.data * lora.ia3
+                else:
+                    if lora.r > 0:
+                        self.weight.data += T(lora.lora_B @ lora.lora_A) * lora.scaling
                 self.merged = name
             elif self.merged != name:
                 raise ValueError("LoRaLayer already has a merged LoRA module. Please reset it first.")
@@ -154,12 +187,16 @@ class Linear(LoRALayer, nn.Linear):
                 if len(adapter_setup) == 1:
                     result = F.linear(x, T(self.weight), bias=self.bias)
                     lora = self.loras[adapter_setup[0]]
-                    if lora.r > 0:
-                        result += (lora.lora_dropout(x) @ lora.lora_A.T @ lora.lora_B.T) * lora.scaling
-                    return result
+                    if lora.config.is_ia3:
+                        result = result * lora.ia3
+                        return result
+                    else:
+                        if lora.r > 0:
+                            result += (lora.lora_dropout(x) @ lora.lora_A.T @ lora.lora_B.T) * lora.scaling
+                        return result
                 else:
                     raise ValueError(f"Invalid adapter setup. Cannot use {adapter_setup} with LoRA.")
-
+        
         return F.linear(x, T(self.weight), bias=self.bias)
 
 
@@ -176,8 +213,13 @@ class MergedLinear(LoRALayer, nn.Linear):
         **kwargs
     ):
         LoRALayer.__init__(self, location_key, config, in_features, out_features, **kwargs)
-
+        print(config)
         assert out_features % len(enable_lora) == 0, "The length of enable_lora must divide out_features"
+        # if self.config.is_ia3 
+        #     if len(enable_lora) == 3:
+        #         self.enable_lora = [config.query_ia3, config.key_ia3, config.value_ia3]
+        #     # TODO: left off here; 
+        # else:
         self.enable_lora = enable_lora
         self.fan_in_fan_out = fan_in_fan_out
         # Actual trainable parameters
@@ -190,6 +232,8 @@ class MergedLinear(LoRALayer, nn.Linear):
             self.weight.data = self.weight.data.T
 
     def _get_lora_shapes(self, config):
+        if config.is_ia3:
+            return (self.out_features,)
         return (config.r * sum(self.enable_lora), self.in_features), (
             self.out_features // len(self.enable_lora) * sum(self.enable_lora),
             config.r,
@@ -225,7 +269,10 @@ class MergedLinear(LoRALayer, nn.Linear):
             elif not self.merged:
                 lora = self.loras[name]
                 # Merge the weights and mark it
-                if lora.r > 0 and any(self.enable_lora):
+                if lora.config.is_ia3 and any(self.enable_lora):
+                    # TODO: figure out merging for ia3 merged layers
+                    raise NotImplementedError("Merging for IA3 MergedLinear not implemented yet.")
+                elif lora.r > 0 and any(self.enable_lora):
                     delta_w = F.conv1d(
                         lora.lora_A.data.unsqueeze(0), lora.lora_B.data.unsqueeze(-1), groups=sum(self.enable_lora)
                     ).squeeze(0)
@@ -244,12 +291,17 @@ class MergedLinear(LoRALayer, nn.Linear):
                 if len(adapter_setup) == 1:
                     result = F.linear(x, T(self.weight), bias=self.bias)
                     lora = self.loras[adapter_setup[0]]
-                    if lora.r > 0:
-                        after_A = F.linear(lora.lora_dropout(x), lora.lora_A)
-                        after_B = F.conv1d(
-                            after_A.transpose(-2, -1), lora.lora_B.unsqueeze(-1), groups=sum(self.enable_lora)
-                        ).transpose(-2, -1)
-                        result += self.zero_pad(after_B) * lora.scaling
+                    if lora.config.is_ia3:
+                        # TODO: do zeroing/padding
+                        print(zero_pad(lora.ia3))
+                        result = result * zero_pad(lora.ia3)
+                        return result
+                    elif lora.r > 0:
+                            after_A = F.linear(lora.lora_dropout(x), lora.lora_A)
+                            after_B = F.conv1d(
+                                after_A.transpose(-2, -1), lora.lora_B.unsqueeze(-1), groups=sum(self.enable_lora)
+                            ).transpose(-2, -1)
+                            result += self.zero_pad(after_B) * lora.scaling
                     return result
                 else:
                     raise ValueError(f"Invalid adapter setup. Cannot use {adapter_setup} with LoRA.")

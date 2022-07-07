@@ -518,7 +518,7 @@ class BloomMLP(nn.Module):
 
     def forward(self, hidden_states, residual):
         hidden_states = self.gelu_impl(self.dense_h_to_4h(hidden_states))
-
+        # activation would go here
         if self.pretraining_tp > 1 and self.slow_but_exact:
             intermediate_output = torch.zeros_like(residual)
             slices = self.dense_4h_to_h.weight.shape[-1] / self.pretraining_tp
@@ -527,6 +527,7 @@ class BloomMLP(nn.Module):
                     hidden_states[:, :, int(i * slices) : int((i + 1) * slices)],
                     self.dense_4h_to_h.weight[:, int(i * slices) : int((i + 1) * slices)],
                 )
+            # need to add LoRA here, but it will be fine for our small models which don't use slow_but_exact
         else:
             intermediate_output = self.dense_4h_to_h(hidden_states)
 
@@ -592,18 +593,15 @@ class BloomBlock(BloomDecoderBlockAdaptersMixin, nn.Module):
 
         layernorm_output = self.post_attention_layernorm(attention_output)
 
-        # attention_output = self.attention_adapters(layernorm_output, residual, None)
-
         # Get residual
         if self.apply_residual_connection_post_layernorm:
             residual = layernorm_output
         else:
             residual = attention_output
 
-        # layernorm_output = self.attention_adapters(attention_output, residual, None)
-
         # MLP.
         output = self.mlp(layernorm_output, residual)
+
         output = self.output_adapters(output, residual, None)
 
         if use_cache:

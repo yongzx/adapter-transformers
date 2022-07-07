@@ -1905,6 +1905,7 @@ if is_torch_available():
         "HoulsbyInvConfig",
         "InvertibleAdaptersMixin",
         "LoRAConfig",
+        "IA3Config",
         "MAMConfig",
         "MBartAdapterModel",
         "MBartModelWithHeads",
