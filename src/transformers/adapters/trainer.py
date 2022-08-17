@@ -81,7 +81,7 @@ class AdapterTrainer(Trainer):
                 or isinstance(self.model.active_adapters, AdapterCompositionBlock)
                 and any([isinstance(child, Fuse) for child in self.model.active_adapters.children])
             )
-        if model.active_adapters is None:
+        if self.model.active_adapters is None:
             raise ValueError(
                 "Expected a model with an active adapter setup."
                 "If you want to fully finetune the model use the Trainer class."
