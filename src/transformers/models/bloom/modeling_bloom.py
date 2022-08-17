@@ -238,7 +238,14 @@ class BloomAttention(nn.Module):
         self.inv_norm_factor = 1.0 / math.sqrt(self.head_dim)
         self.beta = 1.0
 
-        self.query_key_value = nn.Linear(self.hidden_size, 3 * self.hidden_size, bias=True)
+        self.query_key_value = LoRAMergedLinear(
+            self.hidden_size, 
+            3 * self.hidden_size,
+            "selfattn",
+            config,
+            enable_lora=[True, False, True],
+            bias=True,
+            )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)
         self.attention_dropout = nn.Dropout(config.attention_dropout)
 
@@ -382,9 +389,9 @@ class BloomMLP(nn.Module):
 
         self.pretraining_tp = config.pretraining_tp
         self.slow_but_exact = config.slow_but_exact
-        self.dense_h_to_4h = nn.Linear(hidden_size, 4 * hidden_size)
+        self.dense_h_to_4h = LoRALinear(hidden_size, 4 * hidden_size, "intermediate", config)
         self.gelu_impl = BloomGelu()
-        self.dense_4h_to_h = nn.Linear(4 * hidden_size, hidden_size)
+        self.dense_4h_to_h = LoRALinear(4 * hidden_size, hidden_size, "output", config)
         self.hidden_dropout = config.hidden_dropout
 
     def forward(self, hidden_states: torch.Tensor, residual: torch.Tensor) -> torch.Tensor:
