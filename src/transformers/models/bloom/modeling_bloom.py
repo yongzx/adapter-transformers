@@ -658,6 +658,7 @@ class BloomModel(BloomModelAdapterMixin, BloomPreTrainedModel):
         output_type=BaseModelOutputWithPastAndCrossAttentions,
         config_class=_CONFIG_FOR_DOC,
     )
+    @ForwardContext.wrap
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
