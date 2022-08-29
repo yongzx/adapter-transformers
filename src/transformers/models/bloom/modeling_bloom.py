@@ -243,7 +243,6 @@ class BloomAttention(nn.Module):
                 3 * self.hidden_size,
                 "selfattn",
                 config,
-                enable_lora=[True, False, True],
                 bias=True
         )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size)

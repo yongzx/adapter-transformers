@@ -4236,8 +4236,6 @@ if TYPE_CHECKING:
         from .trainer_pt_utils import torch_distributed_zero_first
         from .trainer_seq2seq import Seq2SeqTrainer
 
-<<<<<<< HEAD
-=======
     # Adapters
     if is_torch_available():
         from .adapters import (
@@ -4307,7 +4305,6 @@ if TYPE_CHECKING:
             list_adapters,
         )
 
->>>>>>> 9eb70923ce5f40169b3176b8666d1424ded8ab3a
     # TensorFlow
     try:
         if not is_tf_available():
