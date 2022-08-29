@@ -7,6 +7,7 @@ from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from ...modeling_outputs import (
+    ImageClassifierOutput,
     MultipleChoiceModelOutput,
     QuestionAnsweringModelOutput,
     Seq2SeqModelOutput,
@@ -90,6 +91,9 @@ class PredictionHead(nn.Sequential):
 
     def get_output_embeddings(self):
         return None  # override for heads with output embeddings
+
+    def get_label_names(self):
+        return ["labels"]
 
 
 class ClassificationHead(PredictionHead):
@@ -405,6 +409,70 @@ class QuestionAnsweringHead(PredictionHead):
                 outputs = (total_loss,) + outputs
             return outputs
 
+    def get_label_names(self):
+        return ["start_positions", "end_positions"]
+
+
+class ImageClassificationHead(PredictionHead):
+    def __init__(
+        self,
+        model,
+        head_name,
+        num_labels=2,
+        layers=2,
+        activation_function="tanh",
+        multilabel=False,
+        id2label=None,
+        use_pooler=False,
+        bias=True,
+    ):
+        super().__init__(head_name)
+        self.config = {
+            "head_type": "image_classification",
+            "num_labels": num_labels,
+            "layers": layers,
+            "activation_function": activation_function,
+            "multilabel": multilabel,
+            "label2id": {label: id_ for id_, label in id2label.items()} if id2label is not None else None,
+            "use_pooler": use_pooler,
+            "bias": bias,
+        }
+        self.build(model)
+
+    def forward(self, outputs, cls_output=None, attention_mask=None, return_dict=False, **kwargs):
+        if cls_output is None:
+            if self.config["use_pooler"]:
+                cls_output = kwargs.pop("pooled_output")
+            else:
+                cls_output = outputs[0][:, 0]
+        logits = super().forward(cls_output)
+        loss = None
+        labels = kwargs.pop("labels", None)
+        if labels is not None:
+            if self.config["num_labels"] == 1:
+                #  We are doing regression
+                loss_fct = MSELoss()
+                loss = loss_fct(logits.view(-1), labels.view(-1))
+            elif self.config["multilabel"]:
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
+            else:
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(logits.view(-1, self.config["num_labels"]), labels.view(-1))
+
+        if return_dict:
+            return ImageClassifierOutput(
+                loss=loss,
+                logits=logits,
+                hidden_states=outputs.hidden_states,
+                attentions=outputs.attentions,
+            )
+        else:
+            outputs = (logits,) + outputs[1:]
+            if labels is not None:
+                outputs = (loss,) + outputs
+            return outputs
+
 
 class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
     """
@@ -574,10 +642,14 @@ class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
         # use last adapter name as name of prediction head
         if self.active_adapters:
             head_setup = parse_heads_from_composition(self.active_adapters)
-            if head_setup:
+            if isinstance(head_setup, str):
+                head_setup = [head_setup]
+            if head_setup and all(head in self.heads for head in head_setup):
                 self.active_head = head_setup
             else:
-                logger.info("Could not identify a valid prediction head from setup '{}'.".format(self.active_adapters))
+                logger.info(
+                    "Could not identify valid prediction head(s) from setup '{}'.".format(self.active_adapters)
+                )
 
     def add_custom_head(self, head_type, head_name, overwrite_ok=False, set_active=True, **kwargs):
         if head_type in self.config.custom_heads:
@@ -674,7 +746,8 @@ class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
             if isinstance(outputs, ModelOutput):
                 inputs = {}
                 for key, base_output in outputs.items():
-                    inputs[key] = base_output[batch[0] : batch[-1] + 1]
+                    if torch.is_tensor(base_output):
+                        inputs[key] = base_output[batch[0] : batch[-1] + 1]
                 inputs = outputs.__class__(**inputs)
             else:
                 inputs = tuple()
@@ -687,9 +760,10 @@ class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
             return inputs, cls_input
 
         # Pass invertible adapter if we have one
-        inv_adapter = self.base_model.get_invertible_adapter()
-        if inv_adapter:
-            kwargs["invertible_adapter"] = inv_adapter
+        if hasattr(self.base_model, "get_invertible_adapter"):
+            inv_adapter = self.base_model.get_invertible_adapter()
+            if inv_adapter:
+                kwargs["invertible_adapter"] = inv_adapter
 
         for head in used_heads:
             if head not in self.heads:

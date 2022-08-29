@@ -27,6 +27,9 @@ class PrefixTuningTestMixin(AdapterMethodBaseTestMixin):
     def test_load_prefix_tuning(self):
         self.run_load_test(PrefixTuningConfig())
 
+    def test_load_full_model_prefix_tuning(self):
+        self.run_full_model_load_test(PrefixTuningConfig())
+
     def test_train_prefix_tuning(self):
         self.run_train_test(PrefixTuningConfig(), ["prefix_tunings.{name}."])
 
@@ -36,7 +39,7 @@ class PrefixTuningTestMixin(AdapterMethodBaseTestMixin):
         model.add_adapter("test_prefix", config="prefix_tuning")
         model.to(torch_device)
 
-        input_data = self.get_input_samples((2, 128), config=model.config)
+        input_data = self.get_input_samples(config=model.config)
 
         # user reparamterized prefix
         model.set_active_adapters(["test_prefix"])

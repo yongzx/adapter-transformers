@@ -1,63 +1,62 @@
+import random
 import unittest
 
-from tests.models.gpt2.test_modeling_gpt2 import *
-from transformers import GPT2AdapterModel
+from tests.models.vit.test_modeling_vit import *
+from transformers import ViTAdapterModel
 from transformers.testing_utils import require_torch
 
 from .methods import BottleneckAdapterTestMixin, CompacterTestMixin, LoRATestMixin, PrefixTuningTestMixin, IA3TestMixin
-from .test_adapter import AdapterTestBase, make_config
+from .test_adapter import VisionAdapterTestBase, make_config
 from .test_adapter_backward_compability import CompabilityTestMixin
 from .test_adapter_composition import ParallelAdapterInferenceTestMixin, ParallelTrainingMixin
 from .test_adapter_conversion import ModelClassConversionTestMixin
-from .test_adapter_embeddings import EmbeddingTestMixin
 from .test_adapter_fusion_common import AdapterFusionModelTestMixin
 from .test_adapter_heads import PredictionHeadModelTestMixin
 from .test_common import AdapterModelTesterMixin
 
 
 @require_torch
-class GPT2AdapterModelTest(AdapterModelTesterMixin, GPT2ModelTest):
+class ViTAdapterModelTest(AdapterModelTesterMixin, ViTModelTest):
     all_model_classes = (
-        GPT2AdapterModel,
+        ViTAdapterModel,
     )
 
 
-class GPT2AdapterTestBase(AdapterTestBase):
-    config_class = GPT2Config
+class ViTAdapterTestBase(VisionAdapterTestBase):
+    config_class = ViTConfig
     config = make_config(
-        GPT2Config,
-        n_embd=32,
-        n_layer=4,
-        n_head=4,
-        # set pad token to eos token
-        pad_token_id=50256,
+        ViTConfig,
+        image_size=224,
+        hidden_size=32,
+        num_hidden_layers=4,
+        num_attention_heads=4,
+        intermediate_size=37,
     )
-    tokenizer_name = "gpt2"
+    feature_extractor_name = 'google/vit-base-patch16-224-in21k'
 
 
 @require_torch
-class GPT2AdapterTest(
+class ViTAdapterTest(
     BottleneckAdapterTestMixin,
     CompacterTestMixin,
     IA3TestMixin,
     LoRATestMixin,
     PrefixTuningTestMixin,
-    EmbeddingTestMixin,
-    CompabilityTestMixin,
     AdapterFusionModelTestMixin,
+    CompabilityTestMixin,
     PredictionHeadModelTestMixin,
     ParallelAdapterInferenceTestMixin,
     ParallelTrainingMixin,
-    GPT2AdapterTestBase,
+    ViTAdapterTestBase,
     unittest.TestCase,
 ):
     pass
 
 
 @require_torch
-class GPT2ClassConversionTest(
+class ViTClassConversionTest(
     ModelClassConversionTestMixin,
-    GPT2AdapterTestBase,
+    ViTAdapterTestBase,
     unittest.TestCase,
 ):
     pass

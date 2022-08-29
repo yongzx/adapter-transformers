@@ -22,7 +22,9 @@
 # to defer the actual importing for when the objects are requested. This way `import transformers` provides the names
 # in the namespace without actually importing anything (and especially none of the backends).
 
+
 __version__ = "4.20.0.dev0"
+
 
 from typing import TYPE_CHECKING
 
@@ -1898,11 +1900,13 @@ if is_torch_available():
         "DistilBertAdapterModel",
         "DistilBertModelWithHeads",
         "DynamicAdapterFusionConfig",
+        "EmbeddingAdaptersMixin",
         "ForwardContext",
         "GPT2AdapterModel",
         "GPT2ModelWithHeads",
         "HoulsbyConfig",
         "HoulsbyInvConfig",
+        "IA3Config",
         "InvertibleAdaptersMixin",
         "LoRAConfig",
         "MAMConfig",
@@ -1923,6 +1927,7 @@ if is_torch_available():
         "StaticAdapterFusionConfig",
         "T5AdapterModel",
         "T5ModelWithHeads",
+        "ViTAdapterModel",
         "XLMRobertaAdapterModel",
         "XLMRobertaModelWithHeads",
         "get_adapter_config_hash",
@@ -4231,6 +4236,78 @@ if TYPE_CHECKING:
         from .trainer_pt_utils import torch_distributed_zero_first
         from .trainer_seq2seq import Seq2SeqTrainer
 
+<<<<<<< HEAD
+=======
+    # Adapters
+    if is_torch_available():
+        from .adapters import (
+            ADAPTER_CACHE,
+            ADAPTER_CONFIG_MAP,
+            ADAPTER_MODEL_MAPPING,
+            ADAPTERFUSION_CONFIG_MAP,
+            DEFAULT_ADAPTER_CONFIG,
+            DEFAULT_ADAPTERFUSION_CONFIG,
+            MODEL_WITH_HEADS_MAPPING,
+            AdapterArguments,
+            AdapterConfig,
+            AdapterConfigBase,
+            AdapterFusionConfig,
+            AdapterInfo,
+            AdapterLayer,
+            AdapterLayerBase,
+            AdapterSetup,
+            AdapterTrainer,
+            AdapterType,
+            AutoAdapterModel,
+            AutoModelWithHeads,
+            BartAdapterModel,
+            BartModelWithHeads,
+            BertAdapterModel,
+            BertModelWithHeads,
+            CompacterConfig,
+            CompacterPlusPlusConfig,
+            ConfigUnion,
+            DebertaAdapterModel,
+            DebertaV2AdapterModel,
+            DistilBertAdapterModel,
+            DistilBertModelWithHeads,
+            DynamicAdapterFusionConfig,
+            EmbeddingAdaptersMixin,
+            ForwardContext,
+            GPT2AdapterModel,
+            GPT2ModelWithHeads,
+            HoulsbyConfig,
+            HoulsbyInvConfig,
+            IA3Config,
+            InvertibleAdaptersMixin,
+            LoRAConfig,
+            MAMConfig,
+            MBartAdapterModel,
+            MBartModelWithHeads,
+            ModelAdaptersConfig,
+            ModelAdaptersMixin,
+            ModelWithFlexibleHeadsAdaptersMixin,
+            ModelWithHeadsAdaptersMixin,
+            MultiLingAdapterArguments,
+            ParallelConfig,
+            PfeifferConfig,
+            PfeifferInvConfig,
+            PrefixTuningConfig,
+            RobertaAdapterModel,
+            RobertaModelWithHeads,
+            Seq2SeqAdapterTrainer,
+            StaticAdapterFusionConfig,
+            T5AdapterModel,
+            T5ModelWithHeads,
+            ViTAdapterModel,
+            XLMRobertaAdapterModel,
+            XLMRobertaModelWithHeads,
+            get_adapter_config_hash,
+            get_adapter_info,
+            list_adapters,
+        )
+
+>>>>>>> 9eb70923ce5f40169b3176b8666d1424ded8ab3a
     # TensorFlow
     try:
         if not is_tf_available():

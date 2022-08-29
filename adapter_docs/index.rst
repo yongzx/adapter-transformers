@@ -41,7 +41,7 @@ Currently, we support the PyTorch versions of all models as listed on the `Model
    :caption: Loading and Sharing
 
    loading
-   contributing
+   hub_contributing
    huggingface_hub
 
 .. toctree::
@@ -53,13 +53,14 @@ Currently, we support the PyTorch versions of all models as listed on the `Model
    classes/models/bart
    classes/models/bert
    classes/models/deberta
-   classes/models/debertaV2
+   classes/models/deberta_v2
    classes/models/distilbert
    classes/models/encoderdecoder
    classes/models/gpt2
    classes/models/mbart
    classes/models/roberta
    classes/models/t5
+   classes/models/vit
    classes/models/xlmroberta
 
 .. toctree::
@@ -73,6 +74,13 @@ Currently, we support the PyTorch versions of all models as listed on the `Model
    classes/model_mixins
    classes/adapter_utils
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributing
+
+   contributing
+   contributing/adding_adapter_methods
+   contributing/adding_adapters_to_a_model
 
 Citation
 ========

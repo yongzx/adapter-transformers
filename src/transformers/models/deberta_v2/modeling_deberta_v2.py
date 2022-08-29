@@ -27,8 +27,12 @@ from ...activations import ACT2FN
 from ...adapters.composition import adjust_tensors_for_parallel
 from ...adapters.context import ForwardContext
 from ...adapters.lora import Linear as LoRALinear
-from ...adapters.mixins.bert import BertModelAdaptersMixin, BertOutputAdaptersMixin, BertSelfOutputAdaptersMixin
-from ...adapters.model_mixin import ModelWithHeadsAdaptersMixin
+from ...adapters.mixins.bert import (
+    BertModelAdaptersMixin,
+    BertModelWithHeadsAdaptersMixin,
+    BertOutputAdaptersMixin,
+    BertSelfOutputAdaptersMixin,
+)
 from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutput,
@@ -620,9 +624,13 @@ class DisentangledSelfAttention(nn.Module):
         _attention_head_size = config.hidden_size // config.num_attention_heads
         self.attention_head_size = getattr(config, "attention_head_size", _attention_head_size)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
-        self.query_proj = LoRALinear(config.hidden_size, self.all_head_size, "selfattn", config, bias=True)
-        self.key_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
-        self.value_proj = LoRALinear(config.hidden_size, self.all_head_size, "selfattn", config, bias=True)
+        self.query_proj = LoRALinear(
+            config.hidden_size, self.all_head_size, "selfattn", config, attn_key="q", bias=True
+        )
+        self.key_proj = LoRALinear(config.hidden_size, self.all_head_size, "selfattn", config, attn_key="k", bias=True)
+        self.value_proj = LoRALinear(
+            config.hidden_size, self.all_head_size, "selfattn", config, attn_key="v", bias=True
+        )
 
         self.share_att_key = getattr(config, "share_att_key", False)
         self.pos_att_type = config.pos_att_type if config.pos_att_type is not None else []
@@ -1115,7 +1123,7 @@ class DebertaV2Model(BertModelAdaptersMixin, DebertaV2PreTrainedModel):
 
 @add_start_docstrings("""DeBERTa Model with a `language modeling` head on top.""", DEBERTA_START_DOCSTRING)
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForMaskedLM with Deberta->DebertaV2
-class DebertaV2ForMaskedLM(ModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
+class DebertaV2ForMaskedLM(BertModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [r"position_ids", r"predictions.decoder.bias"]
 
@@ -1265,7 +1273,7 @@ class DebertaV2OnlyMLMHead(nn.Module):
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForSequenceClassification with Deberta->DebertaV2
-class DebertaV2ForSequenceClassification(ModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
+class DebertaV2ForSequenceClassification(BertModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
@@ -1385,7 +1393,7 @@ class DebertaV2ForSequenceClassification(ModelWithHeadsAdaptersMixin, DebertaV2P
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForTokenClassification with Deberta->DebertaV2
-class DebertaV2ForTokenClassification(ModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
+class DebertaV2ForTokenClassification(BertModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
 
     def __init__(self, config):
@@ -1462,7 +1470,7 @@ class DebertaV2ForTokenClassification(ModelWithHeadsAdaptersMixin, DebertaV2PreT
     DEBERTA_START_DOCSTRING,
 )
 # Copied from transformers.models.deberta.modeling_deberta.DebertaForQuestionAnswering with Deberta->DebertaV2
-class DebertaV2ForQuestionAnswering(ModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
+class DebertaV2ForQuestionAnswering(BertModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
 
     def __init__(self, config):
@@ -1562,7 +1570,7 @@ class DebertaV2ForQuestionAnswering(ModelWithHeadsAdaptersMixin, DebertaV2PreTra
     """,
     DEBERTA_START_DOCSTRING,
 )
-class DebertaV2ForMultipleChoice(ModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
+class DebertaV2ForMultipleChoice(BertModelWithHeadsAdaptersMixin, DebertaV2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 

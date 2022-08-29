@@ -16,9 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import create_twin_models
-from .test_adapter_common import BottleneckAdapterTestMixin
-from .test_compacter import CompacterTestMixin
-from .test_ia3 import IA3TestMixin
-from .test_lora import LoRATestMixin
-from .test_prefix_tuning import PrefixTuningTestMixin
+from typing import TYPE_CHECKING
+
+from ....utils import _LazyModule
+
+
+_import_structure = {
+    "adapter_model": ["ViTAdapterModel"],
+}
+
+
+if TYPE_CHECKING:
+    from .adapter_model import ViTAdapterModel
+
+else:
+    import sys
+
+    sys.modules[__name__] = _LazyModule(
+        __name__,
+        globals()["__file__"],
+        _import_structure,
+    )

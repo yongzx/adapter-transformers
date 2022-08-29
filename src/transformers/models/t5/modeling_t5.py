@@ -34,9 +34,10 @@ from ...adapters.mixins.t5 import (
     T5CrossAttentionLayerAdaptersMixin,
     T5FFLayerAdaptersMixin,
     T5ModelAdaptersMixin,
+    T5ModelWithHeadsAdaptersMixin,
     T5SelfAttentionLayerAdaptersMixin,
 )
-from ...adapters.model_mixin import InvertibleAdaptersMixin, ModelWithHeadsAdaptersMixin
+from ...adapters.model_mixin import InvertibleAdaptersMixin
 from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutput,
@@ -359,9 +360,9 @@ class T5Attention(nn.Module):
         self.inner_dim = self.n_heads * self.key_value_proj_dim
 
         # Mesh TensorFlow initialization to avoid scaling before softmax
-        self.q = LoRALinear(self.d_model, self.inner_dim, "selfattn", config, bias=False)
-        self.k = nn.Linear(self.d_model, self.inner_dim, bias=False)
-        self.v = LoRALinear(self.d_model, self.inner_dim, "selfattn", config, bias=False)
+        self.q = LoRALinear(self.d_model, self.inner_dim, "selfattn", config, attn_key="q", bias=False)
+        self.k = LoRALinear(self.d_model, self.inner_dim, "selfattn", config, attn_key="k", bias=False)
+        self.v = LoRALinear(self.d_model, self.inner_dim, "selfattn", config, attn_key="v", bias=False)
         self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
 
         if self.has_relative_attention_bias:
@@ -1507,7 +1508,7 @@ class T5Model(T5ModelAdaptersMixin, T5PreTrainedModel):
 
 
 @add_start_docstrings("""T5 Model with a `language modeling` head on top.""", T5_START_DOCSTRING)
-class T5ForConditionalGeneration(ModelWithHeadsAdaptersMixin, T5ModelAdaptersMixin, T5PreTrainedModel):
+class T5ForConditionalGeneration(T5ModelWithHeadsAdaptersMixin, T5ModelAdaptersMixin, T5PreTrainedModel):
     _keys_to_ignore_on_load_missing = [
         r"encoder\.embed_tokens\.weight",
         r"decoder\.embed_tokens\.weight",
@@ -1831,6 +1832,8 @@ class T5EncoderModel(T5ModelAdaptersMixin, T5PreTrainedModel):
         self.model_parallel = False
         self.device_map = None
 
+        self._init_adapter_modules()
+
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
     def parallelize(self, device_map=None):
         self.device_map = (
@@ -1870,6 +1873,7 @@ class T5EncoderModel(T5ModelAdaptersMixin, T5PreTrainedModel):
 
     @add_start_docstrings_to_model_forward(T5_ENCODER_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=BaseModelOutput, config_class=_CONFIG_FOR_DOC)
+    @ForwardContext.wrap
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,

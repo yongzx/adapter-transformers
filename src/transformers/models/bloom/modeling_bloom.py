@@ -31,7 +31,7 @@ from ...adapters.lora import Linear as LoRALinear
 from ...adapters.lora import MergedLinear as LoRAMergedLinear
 from ...adapters.mixins.bloom import BloomDecoderBlockAdaptersMixin, BloomModelAdapterMixin
 from ...adapters.model_mixin import ModelWithHeadsAdaptersMixin
-from ...adapters.prefix_tuning import PrefixTuningShim
+# from ...adapters.prefix_tuning import PrefixTuningShim
 from ...modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
