@@ -5,9 +5,73 @@ from torch import nn
 
 from transformers.activations import get_activation
 
-from .configuration import AdapterConfig, AdapterFusionConfig
+from .configuration import AdapterConfig, AdapterFusionConfig, AAConfig
 from .context import ForwardContext
+from rational.torch import Rational
 
+import torch
+import torch.nn.functional as F
+
+
+def gumbel_softmax(logits, tau=1, hard=False, eps=1e-10, dim=-1):
+    # type: (Tensor, float, bool, float, int) -> Tensor
+    r"""
+    Samples from the `Gumbel-Softmax distribution`_ and optionally discretizes.
+    You can use this function to replace "F.gumbel_softmax".
+    
+    Args:
+      logits: `[..., num_features]` unnormalized log probabilities
+      tau: non-negative scalar temperature
+      hard: if ``True``, the returned samples will be discretized as one-hot vectors,
+            but will be differentiated as if it is the soft sample in autograd
+      dim (int): A dimension along which softmax will be computed. Default: -1.
+    Returns:
+      Sampled tensor of same shape as `logits` from the Gumbel-Softmax distribution.
+      If ``hard=True``, the returned samples will be one-hot, otherwise they will
+      be probability distributions that sum to 1 across `dim`.
+    .. note::
+      This function is here for legacy reasons, may be removed from nn.Functional in the future.
+    .. note::
+      The main trick for `hard` is to do  `y_hard - y_soft.detach() + y_soft`
+      It achieves two things:
+      - makes the output value exactly one-hot
+      (since we add then subtract y_soft value)
+      - makes the gradient equal to y_soft gradient
+      (since we strip all other gradients)
+    Examples::
+        >>> logits = torch.randn(20, 32)
+        >>> # Sample soft categorical using reparametrization trick:
+        >>> F.gumbel_softmax(logits, tau=1, hard=False)
+        >>> # Sample hard categorical using "Straight-through" trick:
+        >>> F.gumbel_softmax(logits, tau=1, hard=True)
+    .. _Gumbel-Softmax distribution:
+        https://arxiv.org/abs/1611.00712
+        https://arxiv.org/abs/1611.01144
+    """
+    def _gen_gumbels():
+        gumbels = -torch.empty_like(logits).exponential_().log()
+        if torch.isnan(gumbels).sum() or torch.isinf(gumbels).sum():
+            # to avoid zero in exp output
+            gumbels = _gen_gumbels()
+        return gumbels
+
+    gumbels = _gen_gumbels()  # ~Gumbel(0,1)
+    gumbels = (logits + gumbels) / tau  # ~Gumbel(logits,tau)
+    y_soft = gumbels.softmax(dim)
+
+    if hard:
+        # Straight through.
+        index = y_soft.max(dim, keepdim=True)[1]
+        y_hard = torch.zeros_like(logits).scatter_(dim, index, 1.0)
+        ret = y_hard - y_soft.detach() + y_soft
+    else:
+        # Reparametrization trick.
+        ret = y_soft
+    
+    # if torch.sum(torch.isnan(ret)) > 0:
+    #     print()
+
+    return ret
 
 class Activation_Function_Class(nn.Module):
     """
@@ -18,6 +82,9 @@ class Activation_Function_Class(nn.Module):
         super().__init__()
         if hidden_act.lower() == "leakyrelu":
             self.f = nn.functional.leaky_relu
+        elif hidden_act.lower().startswith("rational_"):
+            _, m, n = hidden_act.lower().split("_")
+            self.f = Rational(degrees=(m, n), version="A", approx_func="one") # already initialized with degree (5, 4)
         else:
             self.f = get_activation(hidden_act.lower())
 
@@ -52,6 +119,8 @@ class Adapter(nn.Module):
         self.original_ln_before = config["original_ln_before"]
         self.original_ln_after = config["original_ln_after"]
 
+        self.config = config
+
         # list for all modules of the adapter, passed into nn.Sequential()
         seq_list = []
 
@@ -76,7 +145,8 @@ class Adapter(nn.Module):
             seq_list.append(nn.Linear(self.input_size, self.down_sample))
 
         # select non-linearity
-        self.non_linearity = Activation_Function_Class(config["non_linearity"].lower())
+        act_fn = config["non_linearity"].lower()
+        self.non_linearity = Activation_Function_Class(act_fn)
 
         seq_list.append(self.non_linearity)
 
@@ -116,6 +186,10 @@ class Adapter(nn.Module):
                 nn.init.zeros_(self.adapter_up.bias)
         else:
             raise ValueError("Unknown init_weights type: {}".format(config["init_weights"]))
+        
+        # AAConfig (grumbel_softmax logits)
+        if isinstance(config, AAConfig):
+            self.pis = torch.nn.Parameter(torch.Tensor([config.pi_0, config.pi_1]))
 
     def pre_forward(
         self,
@@ -159,10 +233,14 @@ class Adapter(nn.Module):
 
     def forward(self, x, residual_input):  # , residual_input=None):
         down = self.adapter_down(x)
-
+        
         up = self.adapter_up(down)
         up = up * self.scaling
         output = up
+
+        if isinstance(self.config, AAConfig):
+            switch = gumbel_softmax(self.pis, tau=self.config.tau, hard=True)
+            output = switch[0] * output + switch[1] * x
 
         # apply residual connection before layer norm if configured in this way
         if self.adapter_residual_before_ln:

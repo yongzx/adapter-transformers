@@ -292,6 +292,20 @@ class PfeifferInvConfig(PfeifferConfig):
     inv_adapter: Optional[str] = "nice"
     inv_adapter_reduction_factor: Optional[float] = 2
 
+@dataclass(eq=False)
+class AAConfig(PfeifferConfig):
+    """
+    The adapter architecture proposed by Pfeiffer et al. (2020). See https://arxiv.org/pdf/2005.00247.pdf.
+    """
+
+    # rational
+    non_linearity: str = "rational_5_4" # m = 5, n = 4
+
+    # gumble-softmax
+    tau: float = 0.1
+    pi_0: float = 0.5
+    pi_1: float = 0.5
+
 
 @dataclass(eq=False)
 class HoulsbyConfig(AdapterConfig):
@@ -562,6 +576,7 @@ ADAPTER_CONFIG_MAP = {
     "lora": LoRAConfig(),
     "ia3": IA3Config(),
     "mam": MAMConfig(),
+    "aa": AAConfig(),
 }
 
 DEFAULT_ADAPTER_CONFIG = "pfeiffer"
